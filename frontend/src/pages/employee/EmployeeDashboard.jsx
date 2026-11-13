@@ -4,6 +4,8 @@ import { Plus, Trash2, X } from 'lucide-react';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
 import StatusBadge from '../../components/StatusBadge';
+import StatusFilter from '../../components/StatusFilter';
+import SearchBar from '../../components/SearchBar';
 
 const EmployeeDashboard = () => {
   const [complaints, setComplaints] = useState([]);
@@ -13,9 +15,14 @@ const EmployeeDashboard = () => {
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
 
   const navigate = useNavigate();
 
+  const searchFields = ['title'];
+  
   useEffect(() => {
     let ignore = false;
 
@@ -61,13 +68,29 @@ const EmployeeDashboard = () => {
     }
   };
 
+
+  const filteredComplaints = complaints.filter((item) => {
+
+    const matchesSearch = searchFields.some((field) =>
+      String(item[field] || '')
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    );
+
+    const matchesStatus =
+      statusFilter === 'All' || item.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+
+  });
+
   const handleDelete = async (e, id) => {
     e.stopPropagation();
     if (!window.confirm('Delete this complaint?')) return;
 
     try {
       await api.delete(`/complaints/${id}`);
-      setComplaints(complaints.filter((c) => c.id !== id));
+      setComplaints((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to delete complaint.');
     }
@@ -96,6 +119,20 @@ const EmployeeDashboard = () => {
             {error}
           </div>
         )}
+        
+        <div className="my-5 flex flex-row gap-2">
+          <SearchBar
+            search={search}
+            setSearch={setSearch}
+            placeholder="Search by title..."
+          />
+          
+           <StatusFilter
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            />
+
+        </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           {loading ? (
@@ -114,7 +151,14 @@ const EmployeeDashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 text-sm">
-                {complaints.map((item) => (
+                {filteredComplaints.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="p-8 text-center text-slate-500">
+                      No matching complaints found.
+                    </td>
+                  </tr>
+                ) : (
+                filteredComplaints.map((item) => (
                   <tr
                     key={item.id}
                     onClick={() => navigate(`/complaints/${item.id}`)}
@@ -137,7 +181,7 @@ const EmployeeDashboard = () => {
                       </button>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           )}
