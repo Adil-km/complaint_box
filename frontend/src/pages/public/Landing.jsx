@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ShieldCheck, MessageSquarePlus, CheckCircle2 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 const Landing = () => {
   const { user } = useAuth();
