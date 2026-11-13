@@ -9,6 +9,7 @@ const AdminComplaintDetails = () => {
   const { id } = useParams();
   const [complaint, setComplaint] = useState(null);
   const [status, setStatus] = useState('Pending');
+  const [remarks, setRemarks] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -20,6 +21,7 @@ const AdminComplaintDetails = () => {
         const res = await api.get(`/complaints/${id}`);
         setComplaint(res.data);
         setStatus(res.data.status);
+        setRemarks(res.data.remarks || '');
       } catch (err) {
         console.log(err);
         setError('Complaint not found.');
@@ -30,16 +32,20 @@ const AdminComplaintDetails = () => {
     fetchComplaint();
   }, [id]);
 
-  const handleStatusUpdate = async (newStatus) => {
+  const handleStatusUpdate = async (e) => {
+    e.preventDefault()
+
     setSaving(true);
     setMessage('');
     setError('');
 
     try {
-      const res = await api.patch(`/complaints/${id}/status`, { status: newStatus });
+      const res = await api.patch(`/complaints/${id}/status`, { status: status, remarks: remarks });
       setStatus(res.data.status);
-      setComplaint({ ...complaint, status: res.data.status });
-      setMessage(`Status updated to ${newStatus}.`);
+      setRemarks(res.data.remarks)
+      setComplaint({ ...complaint, status: res.data.status, remarks: res.data.remarks });
+      setMessage(`Status updated to ${res.data.status}.`);
+      
     } catch (err) {
         console.log(err);
       setError('Failed to update status.');
@@ -91,32 +97,61 @@ const AdminComplaintDetails = () => {
             </div>
 
             <div className="pt-6 border-t border-slate-100">
-              <label className="block text-sm font-semibold text-slate-900 mb-3">
-                Update Resolution Status
-              </label>
 
               {message && (
                 <div className="mb-3 p-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-medium">
                   {message}
                 </div>
               )}
+  
+              {error && (
+                <div className="mb-3 p-2.5 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-medium">
+                  {error}
+                </div>
+              )}
 
-              <div className="flex flex-wrap gap-3">
-                {['Pending', 'Resolved', 'Rejected'].map((option) => (
-                  <button
-                    key={option}
-                    disabled={saving || status === option}
-                    onClick={() => handleStatusUpdate(option)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
-                      status === option
-                        ? 'bg-slate-900 text-white border-slate-900 cursor-default'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                    } disabled:opacity-60`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
+              <form onSubmit={handleStatusUpdate}>
+
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Select Complaint Status
+                </label>
+
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  disabled={saving}
+                  className="w-full p-3 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+
+                <label className="block text-sm font-medium text-slate-700 mb-2 mt-4">
+                  Remarks
+                </label>
+
+                <textarea
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  placeholder="Enter your remarks or explanation..."
+                  rows={4}
+                  disabled={saving}
+                  required={status==="Rejected"}
+                  className="w-full p-3 border border-slate-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+                
+              <button
+                type="submit"
+                disabled={
+                  saving ||
+                  (status === complaint.status && remarks === (complaint.remarks || ''))
+                }
+                className="mt-4 w-full bg-slate-900 text-white py-3 rounded-lg text-sm font-semibold hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? 'Updating Status...' : 'Submit Update'}
+              </button>
+            </form>
             </div>
           </div>
         )}

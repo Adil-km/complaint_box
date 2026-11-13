@@ -65,6 +65,19 @@ const ComplaintDetails = () => {
                 {complaint.description}
               </p>
             </div>
+
+            {complaint.remarks &&
+            (
+              <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2 mt-6">
+                Remarks
+              </h2>
+              <p className="text-slate-700 whitespace-pre-line leading-relaxed">
+                {complaint.remarks}
+              </p>
+            </div>
+            )}
+
           </div>
         )}
       </main>

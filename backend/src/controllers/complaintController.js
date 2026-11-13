@@ -5,7 +5,7 @@ const getComplaints = async (req, res) => {
   try {
     if (req.user.role === 'Admin') {
       const result = await db.query(
-        `SELECT c.id, c.title, c.description, c.status, c.created_at,
+        `SELECT c.id, c.title, c.description, c.status, c.remarks, c.created_at,
                 u.employee_id, u.email AS submitted_by
          FROM complaints c
          JOIN users u ON c.user_id = u.id
@@ -17,7 +17,7 @@ const getComplaints = async (req, res) => {
     }
 
     const result = await db.query(
-      `SELECT id, title, description, status, created_at
+      `SELECT id, title, description, status, remarks, created_at
        FROM complaints
        WHERE user_id = $1
        ORDER BY 
@@ -37,7 +37,7 @@ const getComplaintById = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await db.query(
-      `SELECT c.id, c.title, c.description, c.status, c.user_id, c.created_at,
+      `SELECT c.id, c.title, c.description, c.status, c.remarks, c.user_id, c.created_at,
               u.employee_id, u.email AS submitted_by
        FROM complaints c
        JOIN users u ON c.user_id = u.id
@@ -87,19 +87,24 @@ const createComplaint = async (req, res) => {
 // PATCH /api/complaints/:id/status - Admin updates resolution status
 const updateComplaintStatus = async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, remarks } = req.body;
 
   if (!['Pending', 'Resolved', 'Rejected'].includes(status)) {
     return res.status(400).json({ message: 'Invalid status value.' });
+  }
+  
+  if(status==="Rejected" && !remarks){
+    return res.status(400).json({ message: 'Remarks is required if status is rejected' });
   }
 
   try {
     const result = await db.query(
       `UPDATE complaints
-       SET status = $1
-       WHERE id = $2
-       RETURNING id, title, description, status, created_at`,
-      [status, id]
+       SET status = $1,
+       remarks = $2
+       WHERE id = $3
+       RETURNING id, title, description, status, remarks, created_at`,
+      [status,  remarks?.trim() || null, id]
     );
 
     if (result.rows.length === 0) {

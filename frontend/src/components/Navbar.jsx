@@ -19,16 +19,16 @@ const Navbar = () => {
           <span className="font-bold text-lg text-slate-900">Complaint Box</span>
           {user.role === 'Admin' ? (
             <div className="flex space-x-4 text-sm font-medium">
-              <Link to="/admin/dashboard" className="text-slate-600 hover:text-blue-600">
+              <Link to="/admin/dashboard" className="text-slate-600 hover:text-blue-600 hover:underline underline-offset-8 transition-all ease-out duration-100 hover:underline-offset-4">
                 All Complaints
               </Link>
-              <Link to="/admin/employees" className="text-slate-600 hover:text-blue-600">
+              <Link to="/admin/employees" className="text-slate-600 hover:text-blue-600 hover:underline underline-offset-8 transition-all ease-out duration-100 hover:underline-offset-4">
                 Employees
               </Link>
             </div>
           ) : (
             <div className="flex space-x-4 text-sm font-medium">
-              <Link to="/employee/dashboard" className="text-slate-600 hover:text-blue-600">
+              <Link to="/employee/dashboard" className="text-slate-600 hover:text-blue-600 hover:underline underline-offset-8 transition-all ease-out duration-100 hover:underline-offset-4">
                 My Complaints
               </Link>
             </div>
@@ -41,7 +41,7 @@ const Navbar = () => {
           </span>
           <button
             onClick={handleLogout}
-            className="text-sm font-medium text-red-600 hover:text-red-700"
+            className="text-sm font-medium text-red-600 hover:text-red-700 cursor-pointer"
           >
             Logout
           </button>
