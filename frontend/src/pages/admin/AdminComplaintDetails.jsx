@@ -1,59 +1,59 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState} from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
 import StatusBadge from '../../components/StatusBadge';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const AdminComplaintDetails = () => {
   const { id } = useParams();
-  const [complaint, setComplaint] = useState(null);
   const [status, setStatus] = useState('Pending');
-  const [remarks, setRemarks] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    const fetchComplaint = async () => {
-      try {
-        const res = await api.get(`/complaints/${id}`);
-        setComplaint(res.data);
-        setStatus(res.data.status);
-        setRemarks(res.data.remarks || '');
-      } catch (err) {
-        console.log(err);
-        setError('Complaint not found.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchComplaint();
-  }, [id]);
-
-  const handleStatusUpdate = async (e) => {
-    e.preventDefault()
-
-    setSaving(true);
-    setMessage('');
-    setError('');
-
-    try {
-      const res = await api.patch(`/complaints/${id}/status`, { status: status, remarks: remarks });
-      setStatus(res.data.status);
-      setRemarks(res.data.remarks)
-      setComplaint({ ...complaint, status: res.data.status, remarks: res.data.remarks });
-      setMessage(`Status updated to ${res.data.status}.`);
-      
-    } catch (err) {
-        console.log(err);
-      setError('Failed to update status.');
-    } finally {
-      setSaving(false);
+  const [remarks, setRemarks] = useState('');;
+  const [message, setMessage] = useState({message:"", err:""});
+  
+  const queryClient = useQueryClient();
+  
+  const {data: complaint, isLoading, isError, error } = useQuery({
+      queryFn: async ()=> {
+        const response = await api.get(`/complaints/${id}`);      
+          return response.data
+        },
+      queryKey: ["complaint",id]
+    })
+    
+    const changeComplaint= async({ id, status, remarks})=>{
+      const res =  await api.patch(`/complaints/${id}/status`, { status: status, remarks: remarks });
+      return res.data
     }
-  };
+ 
+    const {mutateAsync: updateComplaint, isPending: isChanging} = useMutation({
+    mutationFn: changeComplaint,
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ["complaints"]});
+      queryClient.invalidateQueries({queryKey: ["complaint", id]});
 
+      setMessage({
+        message: `Status updated!`,
+        err: ""
+      });
+    },
+
+    onError: (err) => {
+      setMessage({
+        message: "",
+        err: err.response?.data?.message || 'Failed to update complaint!'
+      });
+    }
+  })
+
+  useEffect(()=>{
+    if(complaint){
+      setStatus(complaint.status);
+      setRemarks(complaint.remarks || '');
+    }
+  },[complaint])
+  
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
@@ -66,11 +66,11 @@ const AdminComplaintDetails = () => {
           Back to All Complaints
         </Link>
 
-        {loading ? (
+        {isLoading ? (
           <div className="bg-white p-8 rounded-xl border border-slate-200 text-sm text-slate-500">
             Loading complaint...
           </div>
-        ) : error ? (
+        ) : isError ? (
           <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">
             {error}
           </div>
@@ -98,19 +98,19 @@ const AdminComplaintDetails = () => {
 
             <div className="pt-6 border-t border-slate-100">
 
-              {message && (
+              {message.message && (
                 <div className="mb-3 p-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-medium">
-                  {message}
+                  {message.message}
                 </div>
               )}
   
-              {error && (
+              {message.err && (
                 <div className="mb-3 p-2.5 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-medium">
-                  {error}
+                  {message.err}
                 </div>
               )}
 
-              <form onSubmit={handleStatusUpdate}>
+              <form>
 
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Select Complaint Status
@@ -119,7 +119,7 @@ const AdminComplaintDetails = () => {
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  disabled={saving}
+                  disabled={isChanging}
                   className="w-full p-3 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
                 >
                   <option value="Pending">Pending</option>
@@ -136,20 +136,38 @@ const AdminComplaintDetails = () => {
                   onChange={(e) => setRemarks(e.target.value)}
                   placeholder="Enter your remarks or explanation..."
                   rows={4}
-                  disabled={saving}
-                  required={status==="Rejected"}
+                  disabled={isChanging}
                   className="w-full p-3 border border-slate-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
                 
               <button
-                type="submit"
+                type="button"
                 disabled={
-                  saving ||
-                  (status === complaint.status && remarks === (complaint.remarks || ''))
+                  isChanging || (status === complaint.status && remarks === (complaint.remarks || ''))
                 }
+                 onClick={async ()=>{
+                  if (status === "Rejected" && !remarks.trim()) {
+                    setMessage({
+                      message: "",
+                      err: "Remarks are required when rejecting a complaint!"
+                    });
+                    return;
+                  }
+
+                  setMessage({ message: "", err: "" });
+                    try {
+                      await updateComplaint({
+                        id: complaint.id,
+                        status,
+                        remarks
+                      });
+                    } catch (e) {
+                      console.log(e);
+                    }
+                }}
                 className="mt-4 w-full bg-slate-900 text-white py-3 rounded-lg text-sm font-semibold hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? 'Updating Status...' : 'Submit Update'}
+                {isChanging ? 'Updating Status...' : 'Submit Update'}
               </button>
             </form>
             </div>

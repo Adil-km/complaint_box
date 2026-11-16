@@ -2,34 +2,43 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 const CreateEmployee = () => {
   const [employeeId, setEmployeeId] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSubmitting(true);
 
     try {
-      await api.post('/employees', {
-        employee_id: employeeId,
+      await newEmployee({id: employeeId, email, password})
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const queryClient = useQueryClient();
+
+  const addEmployee= async({ id, email, password})=>{
+      const res =await api.post('/employees', {
+        employee_id: id,
         email,
         password,
       });
-      navigate('/admin/employees');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create employee.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      return res.data
+  }
+
+  const {mutateAsync: newEmployee, isPending: isAdding, isError, error} = useMutation({
+      mutationFn: addEmployee,
+      onSuccess: ()=>{
+        queryClient.invalidateQueries({ queryKey: ["employees"] });
+        navigate('/admin/employees');
+      }
+    })
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -39,9 +48,9 @@ const CreateEmployee = () => {
           <h1 className="text-xl font-bold text-slate-900 mb-1">Register New Employee</h1>
           <p className="text-sm text-slate-500 mb-6">Create login credentials for an employee</p>
 
-          {error && (
+          {isError && (
             <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">
-              {error}
+              {error.response?.data?.message || error.message}
             </div>
           )}
 
@@ -91,10 +100,10 @@ const CreateEmployee = () => {
               </Link>
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={isAdding}
                 className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50"
               >
-                {submitting ? 'Creating...' : 'Create Employee'}
+                {isAdding ? 'Creating...' : 'Create Employee'}
               </button>
             </div>
           </form>

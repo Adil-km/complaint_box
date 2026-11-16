@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const EditEmployee = () => {
   const { id } = useParams();
@@ -10,44 +11,58 @@ const EditEmployee = () => {
   const [employeeId, setEmployeeId] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    const fetchEmployee = async () => {
-      try {
-        const res = await api.get(`/employees/${id}`);
-        setEmployeeId(res.data.employee_id);
-        setEmail(res.data.email);
-      } catch (err) {
-        console.log(err);
-        setError('Employee not found.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEmployee();
-  }, [id]);
+const queryClient = useQueryClient();
+  
+  const {data: employee, isLoading, isError, error } = useQuery({
+    queryFn: async ()=> {
+      const response = await api.get(`/employees/${id}`);  
+      return response.data
+    },
+    queryKey: ["employee", id]
+  })
+
+  const updateEmployee = async ({ id, email, password }) => {
+    const response = await api.put(`/employees/${id}`, {
+      email,
+      password: password || undefined,
+    });
+
+    return response.data;
+  };
+ 
+  const {mutateAsync: saveEmployee, isPending: isSaving} = useMutation({
+    mutationFn: updateEmployee,
+    onSuccess: ()=>{
+      queryClient.invalidateQueries({ queryKey: ["employee", id] });
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      navigate('/admin/employees');
+    },
+    onError: (err) => {
+      console.log(
+        err.response?.data?.message || 'Failed to update employee.'
+      );
+    }
+  })
+
+  useEffect(()=>{
+    if(employee){
+      setEmployeeId(employee.employee_id);
+      setEmail(employee.email);
+      setPassword("");
+    }
+  },[employee])
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSubmitting(true);
 
     try {
-      await api.put(`/employees/${id}`, {
-        email,
-        password: password || undefined,
-      });
-      navigate('/admin/employees');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update employee.');
-    } finally {
-      setSubmitting(false);
+      await saveEmployee({ id, email, password });
+    } catch (e) {
+      console.log(e);
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
@@ -56,13 +71,13 @@ const EditEmployee = () => {
           <h1 className="text-xl font-bold text-slate-900 mb-1">Edit Employee</h1>
           <p className="text-sm text-slate-500 mb-6">Update account details for {employeeId}</p>
 
-          {error && (
+          {isError && (
             <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">
-              {error}
+              {error.response?.data?.message || error.message}
             </div>
           )}
 
-          {loading ? (
+          {isLoading ? (
             <p className="text-sm text-slate-500">Loading details...</p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -109,10 +124,10 @@ const EditEmployee = () => {
                 </Link>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={isSaving}
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50"
                 >
-                  {submitting ? 'Saving...' : 'Save Changes'}
+                  {isSaving? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

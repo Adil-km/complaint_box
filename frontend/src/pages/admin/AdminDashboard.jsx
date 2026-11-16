@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import api from '../../services/api';
@@ -7,11 +6,9 @@ import Navbar from '../../components/Navbar';
 import StatusBadge from '../../components/StatusBadge';
 import StatusFilter from '../../components/StatusFilter';
 import SearchBar from '../../components/SearchBar';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const AdminDashboard = () => {
-  const [complaints, setComplaints] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -20,21 +17,34 @@ const AdminDashboard = () => {
 
   const searchFields = ['title', 'submitted_by', 'employee_id'];
 
-  useEffect(() => {
-    const fetchAllComplaints = async () => {
-      try {
-        const res = await api.get('/complaints');
-        setComplaints(res.data);
-      } catch (err) {
-        console.log(err);
-        setError('Failed to load organization complaints.');
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchAllComplaints();
-  }, []);
+  const queryClient = useQueryClient();
+
+  const {data: complaint, isLoading, isError, error } = useQuery({
+    queryFn: async ()=> {
+      const response = await api.get('/complaints')      
+      return response.data
+    },
+    queryKey: ["complaints"]
+  })
+
+
+  const deleteComplaint= async({id})=>{
+    const res = await api.delete(`/complaints/${id}`);
+    return res.data;
+  }
+
+  const {mutateAsync: removeComplaint, isPending: isDeleting} = useMutation({
+    mutationFn: deleteComplaint,
+    onSuccess: ()=>{
+      queryClient.invalidateQueries({queryKey: ["complaints"]});
+    },
+    onError: (err)=>{
+      console.log(err.response?.data?.message || 'Failed to delete complaint.');
+    }
+  })
+
+  const complaints = complaint ?? [];
 
   const filteredComplaints = complaints.filter((item) => {
     const matchesSearch = searchFields.some((field) =>
@@ -43,25 +53,10 @@ const AdminDashboard = () => {
         .includes(search.toLowerCase())
     );
 
-    const matchesStatus =
-      statusFilter === 'All' || item.status === statusFilter;
+    const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
-
-  const handleDelete = async (e, id) => {
-    e.stopPropagation();
-
-    if (!window.confirm('Permanently delete this complaint?')) return;
-
-    try {
-      await api.delete(`/complaints/${id}`);
-      setComplaints((prev) => prev.filter((c) => c.id !== id));
-    } catch (err) {
-      console.log(err);
-      alert('Failed to delete complaint.');
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -77,7 +72,7 @@ const AdminDashboard = () => {
           </p>
         </div>
 
-        {error && (
+        {isError && (
           <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">
             {error}
           </div>
@@ -97,7 +92,7 @@ const AdminDashboard = () => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          {loading ? (
+          {isLoading ? (
             <div className="p-8 text-center text-slate-500 text-sm">
               Loading complaints...
             </div>
@@ -149,7 +144,18 @@ const AdminDashboard = () => {
 
                       <td className="py-4 px-6 text-right">
                         <button
-                          onClick={(e) => handleDelete(e, item.id)}
+                          disabled={isDeleting}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+
+                            if (!window.confirm('Delete this complaint?')) return;
+
+                            try {
+                              await removeComplaint({ id: item.id });
+                            } catch (err) {
+                              console.log(err);
+                            }
+                          }}
                           className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 font-medium"
                         >
                           <Trash2 className="w-4 h-4" />

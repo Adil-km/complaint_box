@@ -1,29 +1,20 @@
-import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
 import StatusBadge from '../../components/StatusBadge';
+import { useQuery } from '@tanstack/react-query';
 
 const ComplaintDetails = () => {
   const { id } = useParams();
-  const [complaint, setComplaint] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchComplaint = async () => {
-      try {
-        const res = await api.get(`/complaints/${id}`);
-        setComplaint(res.data);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Complaint not found.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchComplaint();
-  }, [id]);
+  const {data: complaint, isLoading, isError, error } = useQuery({
+    queryFn: async ()=> {
+        const response = await api.get(`/complaints/${id}`);      
+        return response.data
+    },
+    queryKey: ["complaint",id]
+  })
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -37,11 +28,11 @@ const ComplaintDetails = () => {
           Back to My Complaints
         </Link>
 
-        {loading ? (
+        {isLoading ? (
           <div className="bg-white p-8 rounded-xl border border-slate-200 text-sm text-slate-500">
             Loading details...
           </div>
-        ) : error ? (
+        ) : isError ? (
           <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">
             {error}
           </div>

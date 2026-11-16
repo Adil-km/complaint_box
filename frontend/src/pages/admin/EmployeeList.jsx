@@ -1,28 +1,18 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { UserPlus, Pencil } from 'lucide-react';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
+import { useQuery } from '@tanstack/react-query';
 
 const EmployeeList = () => {
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const res = await api.get('/employees');
-        setEmployees(res.data);
-      } catch (err) {
-        console.log(err);
-        setError('Failed to load employees.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEmployees();
-  }, []);
+  const {data: employees, isLoading, isError, error } = useQuery({
+    queryFn: async ()=> {
+      const response = await api.get('/employees');    
+      return response.data
+    },
+    queryKey: ["employees"]
+  })
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -42,14 +32,14 @@ const EmployeeList = () => {
           </Link>
         </div>
 
-        {error && (
+        {isError && (
           <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">
             {error}
           </div>
         )}
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          {loading ? (
+          {isLoading ? (
             <div className="p-8 text-center text-slate-500 text-sm">Loading employees...</div>
           ) : employees.length === 0 ? (
             <div className="p-8 text-center text-slate-500 text-sm">

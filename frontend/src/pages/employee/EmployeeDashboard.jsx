@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, X } from 'lucide-react';
 import api from '../../services/api';
@@ -6,15 +6,14 @@ import Navbar from '../../components/Navbar';
 import StatusBadge from '../../components/StatusBadge';
 import StatusFilter from '../../components/StatusFilter';
 import SearchBar from '../../components/SearchBar';
+import ChatBotBox from '../../components/ChatBotBox';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const EmployeeDashboard = () => {
-  const [complaints, setComplaints] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
   
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -23,54 +22,54 @@ const EmployeeDashboard = () => {
 
   const searchFields = ['title'];
   
-  useEffect(() => {
-    let ignore = false;
+  const queryClient = useQueryClient();
+  
+  
+  const {data: complaint, isLoading, isError, error } = useQuery({
+    queryFn: async ()=> {
+      const response = await api.get('/complaints')      
+      return response.data
+    },
+    queryKey: ["complaints"]
+  })
 
-    const loadComplaints = async () => {
-      try {
-        const res = await api.get('/complaints');
-        if (!ignore) {
-          setComplaints(res.data);
-        }
-      } catch (err) {
-        if (!ignore) {
-          setError('Failed to load your complaints.');
-          console.error(err);
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadComplaints();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError('');
-    try {
+  const addComplaint= async({ title, description })=>{
       const res = await api.post('/complaints', { title, description });
-      setComplaints([res.data, ...complaints]);
-      setTitle('');
-      setDescription('');
+      return res.data
+  }
+ 
+  const {mutateAsync: newComplaint, isPending: isAdding} = useMutation({
+    mutationFn: addComplaint,
+    onSuccess: ()=>{
+      queryClient.invalidateQueries(["complaints"])
       setShowModal(false);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to submit complaint.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      setTitle("");
+      setDescription("");
+    },
+    onError: (err)=>{
+        console.log(err.response?.data?.message || 'Failed to submit complaint.');
+      }
+  })
+    
+  const deleteComplaint= async({id})=>{
+    const res = await api.delete(`/complaints/${id}`);
+    return res.data;
+  }
 
+  const {mutateAsync: removeComplaint, isPending: isDeleting} = useMutation({
+    mutationFn: deleteComplaint,
+    onSuccess: ()=>{
+      queryClient.invalidateQueries(["complaints"])
+    },
+    onError: (err)=>{
+      console.log(err.response?.data?.message || 'Failed to delete complaint.');
+    }
+  })
+
+  const complaints = complaint ?? [];
 
   const filteredComplaints = complaints.filter((item) => {
-
+    
     const matchesSearch = searchFields.some((field) =>
       String(item[field] || '')
         .toLowerCase()
@@ -84,19 +83,10 @@ const EmployeeDashboard = () => {
 
   });
 
-  const handleDelete = async (e, id) => {
-    e.stopPropagation();
-    if (!window.confirm('Delete this complaint?')) return;
-
-    try {
-      await api.delete(`/complaints/${id}`);
-      setComplaints((prev) => prev.filter((c) => c.id !== id));
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete complaint.');
-    }
-  };
+  if(isLoading) return <p>Data is loading</p>  
 
   return (
+
     <div className="min-h-screen bg-slate-50">
       <Navbar />
       <main className="max-w-5xl mx-auto px-6 py-8">
@@ -114,7 +104,7 @@ const EmployeeDashboard = () => {
           </button>
         </div>
 
-        {error && (
+        {isError && (
           <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">
             {error}
           </div>
@@ -135,9 +125,9 @@ const EmployeeDashboard = () => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          {loading ? (
+          {isLoading ? (
             <div className="p-8 text-center text-slate-500 text-sm">Loading complaints...</div>
-          ) : complaints.length === 0 ? (
+          ) : complaint.length === 0 ? (
             <div className="p-8 text-center text-slate-500 text-sm">
               You haven&apos;t submitted any complaints yet.
             </div>
@@ -172,12 +162,23 @@ const EmployeeDashboard = () => {
                     </td>
                     <td className="py-4 px-6 text-right">
                       <button
-                        onClick={(e) => handleDelete(e, item.id)}
+                        disabled={isDeleting}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+
+                          if (!window.confirm('Delete this complaint?')) return;
+
+                          try {
+                            await removeComplaint({ id: item.id });
+                          } catch (err) {
+                            console.log(err);
+                          }
+                        }}
                         className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 font-medium"
                         title="Delete complaint"
                       >
                         <Trash2 className="w-4 h-4" />
-                        Delete
+                        {isDeleting ? 'Deleting': 'Delete'}
                       </button>
                     </td>
                   </tr>
@@ -187,6 +188,10 @@ const EmployeeDashboard = () => {
           )}
         </div>
       </main>
+      
+
+      {/* <ChatBotBox/> */}
+
 
       {/* New Complaint Modal */}
       {showModal && (
@@ -194,12 +199,17 @@ const EmployeeDashboard = () => {
           <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl border border-slate-200">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900">Raise a New Complaint</h2>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => {
+                  setShowModal(false);
+                  setTitle("");
+                  setDescription("");
+                }} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-4">
+            {/* <form onSubmit={handleCreate} className="space-y-4"> */}
+            <form className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
                 <input
@@ -227,17 +237,30 @@ const EmployeeDashboard = () => {
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setTitle("");
+                    setDescription("");
+                  }}
                   className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800"
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  disabled={submitting}
+                  onClick={async ()=>{
+                    try {
+                      await newComplaint({title, description})
+                      setTitle("")
+                      setDescription("")
+                    } catch (e) {
+                      console.log(e);
+                    }
+                  }}
+                  type="button"
+                  disabled={isAdding}
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50"
                 >
-                  {submitting ? 'Submitting...' : 'Submit Complaint'}
+                  {isAdding ? 'Submitting...' : 'Submit Complaint'}
                 </button>
               </div>
             </form>
@@ -245,6 +268,7 @@ const EmployeeDashboard = () => {
         </div>
       )}
     </div>
+
   );
 };
 
