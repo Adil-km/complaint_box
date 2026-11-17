@@ -76,17 +76,20 @@ const EmployeeDashboard = () => {
     );
 
     const matchesStatus =
-      statusFilter === 'All' || item.status === statusFilter;
-
+    statusFilter === 'All' || item.status === statusFilter;
+    
     return matchesSearch && matchesStatus;
-
+    
   });
-
+  
   if(isLoading) return <p>Data is loading</p>  
-
+  
   return (
-
+    
     <div className="min-h-screen bg-slate-50">
+      <ChatBotBox/>
+
+      
       <Navbar />
       <main className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6">
@@ -189,7 +192,6 @@ const EmployeeDashboard = () => {
       </main>
       
 
-      {/* <ChatBotBox/> */}
 
 
       {/* New Complaint Modal */}
