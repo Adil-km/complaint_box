@@ -1,30 +1,50 @@
 import { Bot, X, SendHorizontal} from 'lucide-react';
 import { useRef, useState } from 'react';
+import api from '../services/api';
 
 function ChatBotBox() {
-  const [messages, setMessages] = useState([
-    { id: 'welcome', message: 'Hi! How can I help you today?', role: 'bot' }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("")
   const inputRef = useRef(null)
   const [showChat, setShowChat] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  function addMessage(text, role){   
-    if (!text.trim()) return;
+  async function sendMessage(text, role){   
+    if (!text.trim() || loading) return;
 
-    const data = { 
-      id: crypto.randomUUID(), 
-      message: text, 
-      role 
-    };
-    setMessages(prevMessages => [...prevMessages, data])
-    setInput("")
-    inputRef.current?.focus();
+    const userMessage = { role, parts: [{ text }] };
+
+    setMessages(prevMessages => [...prevMessages, userMessage]);
+    setInput("");
+    setLoading(true);
+
+    try {
+     const response = await api.post("/chat", {
+        history: messages,
+        newMessage: text,
+      });
+
+      const replyText = response.data.response;
+
+      inputRef.current?.focus();
+
+      setMessages(prevMessages => [...prevMessages, {role: "model", parts: [{ text: replyText }]}])
+      
+    } catch (err) {
+      console.log(err);
+      
+       setMessages(prevMessages => [...prevMessages,
+        { role: "model", parts: [{ text: "Error: Failed to fetch response." }] },
+      ]);
+    }finally {
+      setLoading(false);
+    }
+    
   }
 
   function handleKeyDown(e) {
     if (e.key === 'Enter') {
-      addMessage(input, "user");
+      sendMessage(input, "user");
     }
   }
 
@@ -36,7 +56,6 @@ function ChatBotBox() {
 
   return (
     <>
-      {/* chat bubble */}
 
       {showChat ?
         (
@@ -61,10 +80,19 @@ function ChatBotBox() {
           <main className='flex flex-col w-full h-full bg-gray-100 gap-4 p-4 overflow-scroll scrollbar-none'>
 
           {messages &&
-            messages?.map((chat)=>(
-              <ChatMessage key={chat.id} content={chat.message} role={chat.role}/>
+            messages?.map((chat, idx)=>(
+              <ChatMessage key={idx} content={chat.parts[0].text} role={chat.role}/>
               )
             )
+          }
+          
+          {loading &&
+           <div className='inline-flex items-center space-x-1.5 px-4 py-3 bg-white text-black drop-shadow-sm p-3 rounded-r-2xl rounded-tl-2xl max-w-4/5'>
+            <span className="sr-only">Typing...</span>
+            <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:-0.3s]"></div>
+            <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500 [animation-delay:-0.15s]"></div>
+            <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500"></div>
+          </div>
           }
           
           <div ref={lastMessageRef} />
@@ -82,7 +110,7 @@ function ChatBotBox() {
               className='bg-gray-50 align-middle outline-blue-600 border-gray-200 border rounded-full h-10 w-full px-4'/>
 
             <button
-              onClick={()=>addMessage(input, "user")}
+              onClick={()=>{sendMessage(input, "user")}}
               disabled={!input} 
               className='bg-blue-600 rounded-full p-2 focus:outline-black'>
               <SendHorizontal size={16} color="white" />
@@ -91,7 +119,8 @@ function ChatBotBox() {
           </div>
         </section>)
       :
-        (<button onClick={()=> setShowChat(true)} className=" bg-blue-700 rounded-full justify-center items-center p-3 fixed z-50 flex flex-col overflow-hidden shadow-2xl  bottom-20 right-4 w-fit h-fit cursor-pointer">
+        (<button 
+          onClick={()=> {setShowChat(true)}} className=" bg-blue-700 rounded-full justify-center items-center p-3 fixed z-50 flex flex-col overflow-hidden shadow-2xl  bottom-20 right-4 w-fit h-fit cursor-pointer">
           <Bot color='white' size={35} />
         </button>)
       }
