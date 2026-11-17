@@ -24,7 +24,6 @@ const EmployeeDashboard = () => {
   
   const queryClient = useQueryClient();
   
-  
   const {data: complaint, isLoading, isError, error } = useQuery({
     queryFn: async ()=> {
       const response = await api.get('/complaints')      

@@ -16,8 +16,8 @@ import EditEmployee from './pages/admin/EditEmployee';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Landing />} />
@@ -38,8 +38,8 @@ function App() {
             <Route path="/admin/employees/:id/edit" element={<EditEmployee />} />
           </Route>
         </Routes>
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 

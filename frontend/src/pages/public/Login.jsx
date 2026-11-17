@@ -6,18 +6,17 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
-  const { login } = useAuth();
+  const { login, isLoggingIn } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSubmitting(true);
 
     try {
-      const loggedInUser = await login(email, password);
+      const loggedInUser = await login({email, password});
+
       if (loggedInUser.role === 'Admin') {
         navigate('/admin/dashboard');
       } else {
@@ -25,8 +24,6 @@ const Login = () => {
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -69,10 +66,10 @@ const Login = () => {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={isLoggingIn}
             className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition disabled:opacity-50"
           >
-            {submitting ? 'Signing in...' : 'Sign In'}
+            {isLoggingIn ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
       </div>
