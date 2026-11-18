@@ -187,7 +187,7 @@ const EmployeeDashboard = () => {
                         title="Delete complaint"
                       >
                         <Trash2 className="w-4 h-4" />
-                        {isDeleting ? 'Deleting': 'Delete'}
+                        Delete
                       </button>
                     </td>
                   </tr>

@@ -1,6 +1,7 @@
 import { Bot, X, SendHorizontal} from 'lucide-react';
 import { useRef, useState } from 'react';
 import api from '../services/api';
+import SpeechAction from './SpeechAction';
 
 function ChatBotBox({complaints={}}) {
   const [messages, setMessages] = useState([]);
@@ -85,7 +86,7 @@ function ChatBotBox({complaints={}}) {
 
           {messages &&
             messages?.map((chat, idx)=>(
-              <ChatMessage key={idx} content={chat.parts[0].text} role={chat.role}/>
+                <ChatMessage key={idx} content={chat.parts[0].text} role={chat.role}/>
               )
             )
           }
@@ -142,10 +143,18 @@ function ChatMessage({content, role="user"}){
         </div>
       ):
       (
-        <div className='flex flex-col items-start'>
-          <div className='bg-white text-black drop-shadow-sm p-3 rounded-r-2xl rounded-tl-2xl max-w-4/5'>
-            <span className=''>{content}</span>
-          </div>
+        <div className="flex flex-col items-start">
+            <div className="w-fit max-w-4/5">
+                <div className="bg-white text-black drop-shadow-sm p-3 rounded-r-2xl rounded-tl-2xl">
+                    <span>{content}</span>
+                </div>
+
+                <div className="flex justify-end mt-2">
+                    <div className="border border-gray-400 rounded-full w-fit flex p-1">
+                        <SpeechAction text={content} />
+                    </div>
+                </div>
+            </div>
         </div>
       )
   
