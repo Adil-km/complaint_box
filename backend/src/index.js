@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
 const geminiRoutes = require('./routes/geminiRoutes');
+const { sendChatMessage } = require('./controllers/geminiController');
 
 const app = express();
 
@@ -21,7 +22,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/complaints', complaintRoutes);
-app.use('/api/chat', geminiRoutes);
+app.use('/api/chat', geminiRoutes, sendChatMessage);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Complaint Box API is running on Vercel' });

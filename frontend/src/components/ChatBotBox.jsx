@@ -2,19 +2,22 @@ import { Bot, X, SendHorizontal} from 'lucide-react';
 import { useRef, useState } from 'react';
 import api from '../services/api';
 
-function ChatBotBox() {
+function ChatBotBox({complaints={}}) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("")
   const inputRef = useRef(null)
   const [showChat, setShowChat] = useState(false)
   const [loading, setLoading] = useState(false)
-
+  
+  
   async function sendMessage(text, role){   
     if (!text.trim() || loading) return;
 
     const userMessage = { role, parts: [{ text }] };
 
     setMessages(prevMessages => [...prevMessages, userMessage]);
+    let context = {totalComplaints:complaints.length, complaints:complaints}
+    
     setInput("");
     setLoading(true);
 
@@ -22,6 +25,7 @@ function ChatBotBox() {
      const response = await api.post("/chat", {
         history: messages,
         newMessage: text,
+        context
       });
 
       const replyText = response.data.response;
@@ -112,7 +116,7 @@ function ChatBotBox() {
             <button
               onClick={()=>{sendMessage(input, "user")}}
               disabled={!input} 
-              className='bg-blue-600 rounded-full p-2 focus:outline-black'>
+              className={`rounded-full p-2 focus:outline-black ${input ?"bg-blue-600":"bg-blue-300"}`}>
               <SendHorizontal size={16} color="white" />
             </button>
 

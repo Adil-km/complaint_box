@@ -87,7 +87,7 @@ const EmployeeDashboard = () => {
   return (
     
     <div className="min-h-screen bg-slate-50">
-      <ChatBotBox/>
+      <ChatBotBox complaints={complaints}/>
 
       
       <Navbar />
