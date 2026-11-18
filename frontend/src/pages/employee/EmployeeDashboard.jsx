@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, RotateCcw  } from 'lucide-react';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
 import StatusBadge from '../../components/StatusBadge';
@@ -24,7 +24,7 @@ const EmployeeDashboard = () => {
   
   const queryClient = useQueryClient();
   
-  const {data: complaint, isLoading, isError, error } = useQuery({
+  const {data: complaint, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryFn: async ()=> {
       const response = await api.get('/complaints')      
       return response.data
@@ -82,7 +82,7 @@ const EmployeeDashboard = () => {
     
   });
   
-  if(isLoading) return <p>Data is loading</p>  
+  if(isLoading) return <p className='flex flex-col h-lvh w-full justify-center items-center text-3xl font-semibold'>Loading...</p>  
   
   return (
     
@@ -113,6 +113,13 @@ const EmployeeDashboard = () => {
         )}
         
         <div className="my-5 flex flex-row gap-2">
+          <button 
+            onClick={()=>refetch()}
+            disabled={isFetching}
+            className='h-auto rounded-lg shadow-sm border border-slate-300 p-2 text-sm focus:outline-none bg-white focus:ring-1 focus:ring-slate-900 cursor-pointer'>
+            <RotateCcw size={16} color={`${isFetching ? '#909090' : 'black'}`} />
+          </button>
+
           <SearchBar
             search={search}
             setSearch={setSearch}
